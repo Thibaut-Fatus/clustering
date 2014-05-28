@@ -34,87 +34,112 @@ def gen_bin_cat(dist):
 
 
 def xuser(model, model_order, rules, coord):
-  binary = False # change this if you want binary projection for ALL variables (True)
+  mode = 2 # [0, 1, 2] 0 : binary, 1 : gender, age, csp & geo [0..1/7/7/4], 2 : write both files.
+  val = 1 # value for interests / MI used when not projected
   multiple_val = set(['Interests','Market intent'])
   forbidden_val = set(['Funnel','Customer segmentation'])
-  with open('dataset_1M_boostedinterest.csv','wb') as f:
+  with open('dataset_1M.csv','wb') as f:
     wri = writer(f)
-    while True:
-      user = User()
-      for dim in model_order:
-        if dim in ["Age", "Geography", "CSP", "Gender"]:
-          dist = map(float, user.matches_rules(dim, rules).split(" "))
-          cumDist = genCumDist(dist)
-          user[dim] = gen_non_bin_cat(model[dim], cumDist)      
-        elif dim in ["Interests", "Market intent"]:
-          user[dim]=[]
-          for ssdim in model[dim]:
-            dist = float(user.matches_rules(ssdim, rules))
-            if gen_bin_cat(dist):
-              user[dim].append(ssdim) 
-        elif dim == "Funnel":
-          for ssdim in model[dim]:
-            user[dim] = []
-            dist = float(user.matches_rules(ssdim, rules))
-            if ssdim in ["General population","Visitor"] and gen_bin_cat(dist):
-              user[dim].append(ssdim) 
-            elif ssdim == "Client" and "Visitor" in user[dim] and gen_bin_cat(dist):
-              user[dim].append(ssdim)
-            elif ssdim == "Loyal client" and "Client" in user[dim] and gen_bin_cat(dist):
-              user[dim].append(ssdim)
-        #elif dim == "Customer segmentation":
-        #  if user["Funnel"] in ["Client","Loyal client"]:
-        #    dist = map(float, user.matches_rules(dim, rules).split(" "))
-        #    cumDist = genCumDist(dist)
-        #    user[dim]= gen_non_bin_cat(model[dim], cumDist)
-        #elif dim == "Client purchasing categories":
-        #  if user["Funnel"] in ["Client","Loyal client"]:
-        #    user[dim]=[]
-        #    for ssdim in model[dim]:
-        #      dist = float(user.matches_rules(ssdim, rules))
-        #      if gen_bin_cat(dist): user[dim].append(ssdim) 
-        #elif dim == "Performance":
-        #  for perf in ['Active views',"Impressions", 'Clicks', 'Conversions']:
-        #    user[perf] = 0
-        #  for ssdim in model[dim]:
-        #    dist = float(user.matches_rules(ssdim, rules))
-        #    user.set_traffic_data(ssdim, dist)
-        #else:
-        #  raise Exception("Parse error: %s" % dim)
-      if binary:
-        u = [0] * (26 + 20)
-      else:
-        u = [0] * (26 + 4)
-      for k,v in user.items():
-        if binary:
-          if k in multiple_val:
-            for e in v:
-              #print e, coord[k][e] + 4
-              u[coord[k][e] + 20] = 1
-          if k == 'Gender':
-            u[coord[k][v]] = 1
-          if k == 'Age':
-            u[2 + coord[k][v]] = 1
-          if k == 'CSP':
-            u[9 + coord[k][v]] = 1 
-          if k == 'Geography':
-            u[16 + coord[k][v]] = 1
-          
-        else:
-          if k in multiple_val:
-            for e in v:
-              #print e, coord[k][e] + 4
-              u[coord[k][e] + 4] = 5
-          if k == 'Gender':
-            u[0] = coord[k][v]
-          if k == 'Age':
-            u[1] = coord[k][v]
-          if k == 'CSP':
-            u[2] = coord[k][v]
-          if k == 'Geography':
-            u[3] = coord[k][v]
-      wri.writerow(u)
-      yield user
+    with open('dataset_1M_bin.csv','wb') as f_b:
+      wri_b = writer(f_b)
+      while True:
+        user = User()
+        for dim in model_order:
+          if dim in ["Age", "Geography", "CSP", "Gender"]:
+            dist = map(float, user.matches_rules(dim, rules).split(" "))
+            cumDist = genCumDist(dist)
+            user[dim] = gen_non_bin_cat(model[dim], cumDist)      
+          elif dim in ["Interests", "Market intent"]:
+            user[dim]=[]
+            for ssdim in model[dim]:
+              dist = float(user.matches_rules(ssdim, rules))
+              if gen_bin_cat(dist):
+                user[dim].append(ssdim) 
+          elif dim == "Funnel":
+            for ssdim in model[dim]:
+              user[dim] = []
+              dist = float(user.matches_rules(ssdim, rules))
+              if ssdim in ["General population","Visitor"] and gen_bin_cat(dist):
+                user[dim].append(ssdim) 
+              elif ssdim == "Client" and "Visitor" in user[dim] and gen_bin_cat(dist):
+                user[dim].append(ssdim)
+              elif ssdim == "Loyal client" and "Client" in user[dim] and gen_bin_cat(dist):
+                user[dim].append(ssdim)
+          #elif dim == "Customer segmentation":
+          #  if user["Funnel"] in ["Client","Loyal client"]:
+          #    dist = map(float, user.matches_rules(dim, rules).split(" "))
+          #    cumDist = genCumDist(dist)
+          #    user[dim]= gen_non_bin_cat(model[dim], cumDist)
+          #elif dim == "Client purchasing categories":
+          #  if user["Funnel"] in ["Client","Loyal client"]:
+          #    user[dim]=[]
+          #    for ssdim in model[dim]:
+          #      dist = float(user.matches_rules(ssdim, rules))
+          #      if gen_bin_cat(dist): user[dim].append(ssdim) 
+          #elif dim == "Performance":
+          #  for perf in ['Active views',"Impressions", 'Clicks', 'Conversions']:
+          #    user[perf] = 0
+          #  for ssdim in model[dim]:
+          #    dist = float(user.matches_rules(ssdim, rules))
+          #    user.set_traffic_data(ssdim, dist)
+          #else:
+          #  raise Exception("Parse error: %s" % dim)
+        if mode == 0:
+          ub = [0] * (26 + 20)
+          for k,v in user.items():
+            if k in multiple_val:
+              for e in v:
+                #print e, coord[k][e] + 4
+                ub[coord[k][e] + 20] = 1
+            if k == 'Gender':
+              ub[coord[k][v]] = 1
+            if k == 'Age':
+              ub[2 + coord[k][v]] = 1
+            if k == 'CSP':
+              ub[9 + coord[k][v]] = 1 
+            if k == 'Geography':
+              ub[16 + coord[k][v]] = 1
+          wri_b.writerow(ub)
+        elif mode == 2:
+          ub = [0] * (26 + 20)
+          u = [0] * (26 + 4)
+          for k,v in user.items():
+            if k in multiple_val:
+              for e in v:
+                #print e, coord[k][e] + 4
+                ub[coord[k][e] + 20] = 1
+                u[coord[k][e] + 4] = val
+            if k == 'Gender':
+              ub[coord[k][v]] = 1
+              u[0] = coord[k][v]
+            if k == 'Age':
+              ub[2 + coord[k][v]] = 1
+              u[1] = coord[k][v]
+            if k == 'CSP':
+              ub[9 + coord[k][v]] = 1 
+              u[2] = coord[k][v]
+            if k == 'Geography':
+              ub[16 + coord[k][v]] = 1
+              u[3] = coord[k][v]
+          wri.writerow(u)
+          wri_b.writerow(ub)
+        elif mode == 1:
+          u = [0] * (26 + 4)
+          for k,v in user.items():
+            if k in multiple_val:
+              for e in v:
+                #print e, coord[k][e] + 4
+                u[coord[k][e] + 4] = val
+            if k == 'Gender':
+              u[0] = coord[k][v]
+            if k == 'Age':
+              u[1] = coord[k][v]
+            if k == 'CSP':
+              u[2] = coord[k][v]
+            if k == 'Geography':
+              u[3] = coord[k][v]
+          wri.writerow(u)
+        yield user
 
 
 def get_model_and_rules_from_csv():

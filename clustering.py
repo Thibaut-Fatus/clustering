@@ -1,4 +1,5 @@
-import csv, time, random, operator
+# coding=utf-8
+import csv, time, random, operator, sys
 
 import numpy as np
 from numpy import genfromtxt
@@ -15,10 +16,19 @@ from sklearn.metrics.pairwise import euclidean_distances
 
 from collections import defaultdict
 
-filename = 'dataset_1M_boostedinterest.csv'
-filename = 'dataset_100k_boostedinterest.csv'
-filename = 'dataset_binary_100k.csv'
-#filename = 'dataset_binary_1M.csv'
+import pandas as pd
+
+## filename for classifier
+filename_clf = 'dataset_1M_boostedinterest.csv'
+filename_clf = 'dataset_100k_boostedinterest.csv'
+filename_clf = 'dataset_100k_bin.csv'
+#filename_clf = 'dataset_1M_bin.csv'
+
+## filename for pandas stats
+filename_pd = 'dataset_100k_bin.csv'
+
+## classifier relative
+choose_clf = 'kmeans' # [kmeans, dbscan]
 n_clusters = 4
 val = 5 ## value given for weighted distance (interests / market intent)
 n_components = 5 #PCA
@@ -32,7 +42,9 @@ binary = True
 ## en use pca les decrits sont pas mal avec DBSCAN, mais pas la visu 
 ## ward en memory error, comme le precompute sur les distances ...
 ## dbscan sans pca en binaire prend trop de temps
+## dbscan(0.3,20) marche pas mal en pca5 binaire sur 100k pareil en 0.3,100, (4/5 clusters) mais pas en 1M .. (180, 4000s de calcul..)
 
+## mapper to get dict of dimensions and subdimensions
 print '### loading mapper ... ###'
 with open('map.csv', 'rb') as f:
   r = csv.reader(f)
@@ -51,12 +63,13 @@ with open('map.csv', 'rb') as f:
     ssdims[dim_id][ssdim_id] = ssdim
 print 'ok !'
 
+## mask to get dims / subdims from indices
 print '### creating mask ...'
 sorted_dims = sorted(dims.iteritems(), key=operator.itemgetter(0))
 mask = dict()
 mask_ssd = dict()
 i = 0
-always_bin = set(['Market intent', 'Interests'])
+always_bin = set(['Market intent', 'Interests', 'Funnel client'])
 for d_id, d_name in sorted_dims:
   if binary or d_name in always_bin:
     for ssd in ssdims[d_id]:
@@ -70,27 +83,40 @@ print "ok !"
 #print mask
 #print mask_ssd
 
-print "### loading file : %s ###" % filename
-data = genfromtxt(filename, delimiter=',')
- 
+## file loading for classification
+print "### loading file : %s ###" % filename_clf
+data = genfromtxt(filename_clf, delimiter=',')
 print "data loaded ! length : %s" % len(data)
 
+## compute PCA if necessary and project data
 if (use_pca):
   print "### using PCA with %s components" % n_components
 #pca = PCA(n_components=n_digits).fit(data)
   pca = PCA(n_components=n_components)
   reduced_data = pca.fit_transform(data)
+
+## classifiers initialisation  
 #mbk = MiniBatchKMeans(init='k-means++', n_clusters=n_clusters, batch_size=10000,
 #                      n_init=5, max_no_improvement=10, verbose=0)
 km = KMeans(init='k-means++', n_clusters=n_clusters, precompute_distances=False,  
             n_init=10,  verbose=0)
-dbs = DBSCAN(eps=2, min_samples=100)#,metric=metric)
+dbs100k = DBSCAN(eps=0.3, min_samples=20)#,metric=metric)
+dbs1M = DBSCAN(eps=0.3, min_samples=100)#,metric=metric)
 #ward = Ward(n_clusters=n_clusters)
 #mbk = MiniBatchKMeans(init=pca.components_, n_clusters=3, batch_size=1000,
 #                      n_init=1, max_no_improvement=10, verbose=0)
-## CHOOSE CLASSIFIER ##
-clf = km
 
+## classifier choice from imput string (need to be arg ..)
+print "### classifier: %s ###" % choose_clf
+if choose_clf == 'kmeans':
+  clf = km
+elif choose_clf == 'dbscan':
+  clf = dbs
+else:
+  print "error: unknown classifier (%s) " % choose_clf
+  sys.exit(-1)
+
+## fitting data
 print "### fitting data ... ###"
 #t0 = time.time()
 #mbk.fit(data)
@@ -104,23 +130,15 @@ else:
 print 'ok : %s s' % (time.time()-t0)
 print "all good .."
 
-#labels = mbk.labels_
-#cluster_centers = mbk.cluster_centers_
-#labels_unique = np.unique(labels)
-
+## retrieving infos for display, clusters stats ...
 labels = clf.labels_
-#cluster_centers = cls.cluster_centers_
+got_veters = False
+try:
+  cluster_centers = clf.cluster_centers_
+  got_centers = True
+except:
+  print 'cannot have centers of clusters for algo : %s' % choose_clf
 labels_unique = np.unique(labels)
-
-#for c in cluster_centers:
-#  print c
-
-#pop = defaultdict(int)
-#
-#for l in labels:
-#  pop[l] += 1
-#
-#print pop
 
 pop = defaultdict(int)
 
@@ -128,7 +146,8 @@ for l in labels:
   pop[l] += 1
 
 n_clusters = len(labels_unique)
-print labels_unique
+
+print "### labels: %s " % ','.join([str(int(l)) for l in labels_unique])
 
 nb_rows = len(data[0])
 filters_per_label = dict()
@@ -171,12 +190,15 @@ for p,nb in pop.items():
     for d, name in sorted_dims:
       ldim[d].sort()
       ldim[d].reverse()
-      bdim[d] = ldim[d][0][0]
+      try:
+        bdim[d] = ldim[d][0][0]
+      except:
+        print 'no data, skipping'
     best_dims = sorted(bdim.iteritems(), key=operator.itemgetter(1), reverse = True)
     #print best_dims
     for d,s in best_dims:
       print dims[d]
-      for ele in ldim[d][:3]:
+      for ele in ldim[d][:10]:
         print "\t%s : %s in, %s out ( %.2f %%)" % (ele[3], ele[2], ele[1], ele[0])
       print "\t\t__ __ __"
 
@@ -210,6 +232,15 @@ for p,nb in pop.items():
     for ele in lmi[-2:]:
       print "\t%s : %s / %s ( %.2f %%)" % (ele[3], ele[2], ele[1], ele[0])
     print "\n"
+
+## compute if possible distance between clusters
+if got_centers:
+  center_distances = euclidean_distances(cluster_centers)
+  print "\tlabel\tlabel\tdistance"
+  for i in labels_unique:
+    for j in labels_unique:
+      if i < j:
+        print "\t%s\t%s\t%.3f" % (i, j, center_distances[i][j])
 
 color={-1:'c',0:'r', 1:'b', 2:'g', 3:'y', 4:'k', 5:'m', 6:'c', 7:0.1, 8:0.3, 9:0.8}
 for i in xrange(10, 100):
