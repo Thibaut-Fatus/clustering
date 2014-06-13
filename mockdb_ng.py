@@ -38,9 +38,9 @@ def xuser(model, model_order, rules, coord):
   val = 1 # value for interests / MI used when not projected
   multiple_val = set(['Interests','Market intent'])
   forbidden_val = set(['Funnel','Customer segmentation'])
-  with open('dataset_1M.csv','wb') as f:
+  with open('dataset_20M.csv','wb') as f:
     wri = writer(f)
-    with open('dataset_1M_bin.csv','wb') as f_b:
+    with open('dataset_20M_bin.csv','wb') as f_b:
       wri_b = writer(f_b)
       while True:
         user = User()
