@@ -48,6 +48,8 @@ display = False
 write_output = True
 max_depth = 2 # for data visualisation and ID assignation (crossfilter)
 
+compute_global_means = True # compute means of all indices, which gives us the repartition in % of ssdim (ex : 82% bargain hunter in overall pop) NEED TO BE BINARY
+
 ## projection interests X market intent X socio-demo 
 X = {'Gender': 1, 'Age': 1, 'CSP' : 1, 'Geography' : 1}
 #X = {'Gender': 0, 'Age': 0, 'CSP' : 1}
@@ -67,6 +69,23 @@ print "### loading file : %s ###" % filename_clf
 data = genfromtxt(filename_clf, delimiter=',')
 print "data loaded ! length : %s" % len(data)
 data_ini = data #keep data structure for display
+
+if (binary and compute_global_means):
+  print "### writing global stats"
+  store_mean = defaultdict(int)
+  total = 0
+  for d in data:
+    total += 1
+    i = 0
+    for e in d:
+      store_mean[i] += e
+      i += 1
+  print "total : %s" % total 
+  with open("interests_mean_all.data", 'wb') as f:
+    for i, l in store_mean.items():
+      f.write("%s,%s,%s\n" % (dims[mask[i]], ssdims[mask[i]][mask_ssd[i]], l))
+  print "ok!"
+
 
 ## scale data if asked
 if scale_data:
@@ -259,11 +278,11 @@ def create_cluster(d_label, dims_to_consider, label_id, infos, filter_fixed):
   print dims_to_consider
   global first_write
   first_write = True
-  filename_interest = "interests-%s.data" % p
+  filename_interest = "data_clustering/interests-%s.data" % p
   w_interest = open(filename_interest, 'wb')
   w_interest.write('{"data": [')
 
-  filename_cluster = "cluster-%s.csv" % label_id
+  filename_cluster = "data_clustering/cluster-%s.csv" % label_id
   infos["names"].append((label_id, filename_cluster))
   infos["interests"].append((label_id, filename_interest))
   infos["counts"].append((label_id, len(d_label)))
@@ -345,7 +364,7 @@ for p,nb in pop.items():
       print "\t\t__ __ __"
     d_label = []
     filter_fixed = []
-    trunc_dim = copy.deepcopy(always_bin) # retrive Intersets, MI, Funnel..
+    trunc_dim = copy.deepcopy(always_bin) # retrieve Intersets, MI, Funnel..
     if (len(filter_real_count) == 1):
       indice = filter_real_count[0]
       print indice
@@ -375,7 +394,8 @@ for p,nb in pop.items():
       if dims[d_id] not in trunc_dim:
         dims_to_consider.append((d_id, dims[d_id]))
     create_cluster(d_label, dims_to_consider, p, infos, filter_fixed)
-      
+  
+  # no binary projection __ IT MAY NOT WORK ANYMORE    
   else:
     li = []
     lmi = []
@@ -418,6 +438,11 @@ if got_centers:
     for j in labels_unique:
       if i < j:
         print "\t%s\t%s\t%.3f" % (i, j, center_distances[i][j])
+
+
+###################
+####  DISPLAY  ####
+###################
 
 if display:
   color={-1:'c',0:'r', 1:'b', 2:'g', 3:'y', 4:'k', 5:'m', 6:'c', 7:0.1, 8:0.3, 9:0.8}
