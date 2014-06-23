@@ -331,7 +331,7 @@ for p,nb in pop.items():
       e = {}
       if compute_pandas:
         e_t = []
-        if ssdims[mask[i]][mask_ssd[i]]] == 'Female':
+        if ssdims[mask[i]][mask_ssd[i]] == 'Female':
           e_t = res[ssdims[mask[i]][mask_ssd[i]]]['Male'] #use ['Female'] to get first column only as we are using 'count' and all rows are equal
         else:
           e_t = res[ssdims[mask[i]][mask_ssd[i]]]['Female'] #use ['Female'] to get first column only as we are using 'count' and all rows are equal
