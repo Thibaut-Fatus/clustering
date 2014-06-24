@@ -88,13 +88,9 @@ if (binary and compute_global_means):
     store_pn[dims[mask[i]]][ssdims[mask[i]][mask_ssd[i]]] = l
   print store_pn
   with open("interests_mean_all.json", 'wb') as f:
-    f.write('{"global":[')
-    first_dim = True
+    f.write('{"global":[\n{"count":%s}' % total)
     for k, l in store_pn.items():
-      if first_dim == False:
-        f.write(',')
-      first_dim = False
-      f.write('\n{"%s":[' % k)
+      f.write(',\n{"%s":[' % k)
       first = True
       for local_k, val in l.items():
         if first == False:
