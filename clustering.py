@@ -87,7 +87,7 @@ if (binary and compute_global_means):
       store_pn[dims[mask[i]]] = defaultdict(str)
     store_pn[dims[mask[i]]][ssdims[mask[i]][mask_ssd[i]]] = l
   print store_pn
-  with open("interests_mean_all.data", 'wb') as f:
+  with open("interests_mean_all.json", 'wb') as f:
     f.write('{"global":[')
     first_dim = True
     for k, l in store_pn.items():
