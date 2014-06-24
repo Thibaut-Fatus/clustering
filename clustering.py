@@ -81,11 +81,29 @@ if (binary and compute_global_means):
       store_mean[i] += e
       i += 1
   print "total : %s" % total 
+  store_pn = defaultdict(str)
+  for i, l in store_mean.items():
+    if store_pn[dims[mask[i]]] == "":
+      store_pn[dims[mask[i]]] = defaultdict(str)
+    store_pn[dims[mask[i]]][ssdims[mask[i]][mask_ssd[i]]] = l
+  print store_pn
   with open("interests_mean_all.data", 'wb') as f:
-    for i, l in store_mean.items():
-      f.write("%s,%s,%s\n" % (dims[mask[i]], ssdims[mask[i]][mask_ssd[i]], l))
+    f.write('{"global":[')
+    first_dim = True
+    for k, l in store_pn.items():
+      if first_dim == False:
+        f.write(',')
+      first_dim = False
+      f.write('\n{"%s":[' % k)
+      first = True
+      for local_k, val in l.items():
+        if first == False:
+          f.write(',')
+        first = False
+        f.write('\n{"%s":%s}' % (local_k, val))
+      f.write(']}')
+    f.write('\n]}')
   print "ok!"
-
 
 ## scale data if asked
 if scale_data:
