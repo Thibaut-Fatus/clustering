@@ -86,19 +86,18 @@ if (binary and compute_global_means):
     if store_pn[dims[mask[i]]] == "":
       store_pn[dims[mask[i]]] = defaultdict(str)
     store_pn[dims[mask[i]]][ssdims[mask[i]][mask_ssd[i]]] = l
-  print store_pn
   with open("interests_mean_all.json", 'wb') as f:
-    f.write('{"global":[\n{"count":%s}' % total)
+    f.write('{\n"count":%s' % total)
     for k, l in store_pn.items():
-      f.write(',\n{"%s":[' % k)
+      f.write(',\n"%s":{' % k)
       first = True
       for local_k, val in l.items():
         if first == False:
           f.write(',')
         first = False
-        f.write('\n{"%s":%s}' % (local_k, val))
-      f.write(']}')
-    f.write('\n]}')
+        f.write('\n"%s":%s' % (local_k, val))
+      f.write('}')
+    f.write('\n}')
   print "ok!"
 
 ## scale data if asked
