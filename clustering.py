@@ -89,6 +89,10 @@ if (binary and compute_global_means):
   with open("interests_mean_all.json", 'wb') as f:
     f.write('{\n"count":%s' % total)
     for k, l in store_pn.items():
+      if k == "Interests":
+        k = 'interest'
+      if k == "Market intent":
+        k = 'mi'
       f.write(',\n"%s":{' % k)
       first = True
       for local_k, val in l.items():
@@ -258,46 +262,64 @@ if compute_pandas:
  #sorted_count = sorted(count_combi.iteritems(), key=operator.itemgetter(1), reverse = True)
  #for i in range(100):
 ##  print sorted_count[i]
-first_write = True
+first_write_interests = True
 
 def interest_drop(d_label, current_path, w):
-  global first_write
+  global first_write_interests
   for _, ss_dim in ssdims[dims_ids['Interests']].items():
     l = len(d_label[d_label[ss_dim] == 1])
     if l > 0:
-      if first_write:
-        first_write = False
+      if first_write_interests:
+        first_write_interests = False
         w.write('{"p1":"%s", "p2":"%s", "interest":"%s", "count":%s}' % (current_path[0], current_path[1], ss_dim, l))
       else:
         w.write(',{"p1":"%s", "p2":"%s", "interest":"%s", "count":%s}' % (current_path[0], current_path[1], ss_dim, l))
 
+first_write_mi = True 
+
+def market_intent_drop(d_label, current_path, w):
+  global first_write_mi
+  for _, ss_dim in ssdims[dims_ids['Market intent']].items():
+    l = len(d_label[d_label[ss_dim] == 1])
+    if l > 0:
+      if first_write_mi:
+        first_write_mi = False
+        w.write('{"p1":"%s", "p2":"%s", "mi":"%s", "count":%s}' % (current_path[0], current_path[1], ss_dim, l))
+      else:
+        w.write(',{"p1":"%s", "p2":"%s", "mi":"%s", "count":%s}' % (current_path[0], current_path[1], ss_dim, l))
 ## may be a problem if more than max_depth filters are > threshold (male-urban-student -> only have 18- left ..) 
 
-def recursive_drop(d_label, dims_to_consider, current_path, w_cluster, w_interest):
+def recursive_drop(d_label, dims_to_consider, current_path, w_cluster, w_interest, w_mi):
   if (len(dims_to_consider) > 0 and len(current_path) < max_depth + 1):
     d_id, d = dims_to_consider[0]
     for _,ss_dim in ssdims[d_id].items():
       reduced_d_label = d_label[d_label[ss_dim] == 1]
       new_path = copy.deepcopy(current_path)
       new_path.append(ss_dim)
-      recursive_drop(reduced_d_label, dims_to_consider[1:], new_path, w_cluster, w_interest)
+      recursive_drop(reduced_d_label, dims_to_consider[1:], new_path, w_cluster, w_interest, w_mi)
   else:
     path = "#".join(current_path)
     if len(d_label) > 0:
       w_cluster.writerow([path, len(d_label)])
       interest_drop(d_label, current_path, w_interest)
+      market_intent_drop(d_label, current_path, w_mi)
 
 def create_cluster(d_label, dims_to_consider, label_id, infos, filter_fixed): 
   print dims_to_consider
-  global first_write
-  first_write = True
+  global first_write_mi, first_write_interests
+  first_write_interests = True
+  first_write_mi = True
   filename_interest = "data_clustering/interests-%s.data" % p
   w_interest = open(filename_interest, 'wb')
   w_interest.write('{"data": [')
+  filename_mi = "data_clustering/mis-%s.data" % p
+  w_mi = open(filename_mi, 'wb')
+  w_mi.write('{"data": [')
 
   filename_cluster = "data_clustering/cluster-%s.csv" % label_id
   infos["names"].append((label_id, filename_cluster))
   infos["interests"].append((label_id, filename_interest))
+  infos["marketIntents"].append((label_id, filename_mi))
   infos["counts"].append((label_id, len(d_label)))
   if (len(filter_fixed) == 1):
     infos["filters"].append((label_id, filter_fixed[0]))
@@ -306,9 +328,10 @@ def create_cluster(d_label, dims_to_consider, label_id, infos, filter_fixed):
   else:
     infos["filters"].append((label_id, "No Filters"))
   w_cluster = csv.writer(open(filename_cluster, 'wb'))
-  recursive_drop(d_label, dims_to_consider, [], w_cluster, w_interest)
+  recursive_drop(d_label, dims_to_consider, [], w_cluster, w_interest, w_mi)
 
   w_interest.write(']}')
+  w_mi.write(']}')
 
 def write_cluster_info(infos):
   w_info = open("cluster_info.json", 'wb')
@@ -329,6 +352,7 @@ def write_cluster_info(infos):
 infos = dict()
 infos["names"] = []
 infos["interests"] = []
+infos["marketIntents"] = []
 infos["counts"] = []
 infos["filters"] = []
 for p,nb in pop.items():
@@ -388,7 +412,7 @@ for p,nb in pop.items():
       indice_u = ssdims[mask[indice]][mask_ssd[indice]]
       trunc_dim.add(dims[mask[indice]])
       d_label = data_pandas[(data_pandas[indice_u] == 1) & (data_pandas['labels'] == p)]
-      print "\n\tCombinaison of one 95 %% filter : %s (%s)" % (len(d_label), indice_u)
+      print "\n\tCombinaison of one %s %% filter : %s (%s)" % (all_in_threshold, len(d_label), indice_u)
       filter_fixed.append(indice_u)
 
     elif (len(filter_real_count) == 2):
@@ -400,7 +424,8 @@ for p,nb in pop.items():
       trunc_dim.add(dims[mask[indice0]])
       trunc_dim.add(dims[mask[indice1]])
       d_label = data_pandas[(data_pandas[indice0_u] == 1) & (data_pandas[indice1_u] == 1) & (data_pandas['labels'] == p)]
-      print "\n\tCombinaison of two 95 %% filters : %s (%s, %s)" % (len(d_label), 
+      print "\n\tCombinaison of two %s %% filters : %s (%s, %s)" % (all_in_threshold,
+                                                                    len(d_label), 
                                                                     indice0_u, 
                                                                     indice1_u) 
       filter_fixed.append(indice0_u)
