@@ -18,6 +18,8 @@ from collections import defaultdict
 
 import pandas as pd
 
+import pickle
+
 ## local imports, not the best way to do it but needed for clarity
 from config_clustering import *
 from user_mask import *
@@ -80,6 +82,9 @@ if (projection_mode == 1):
 #pca = PCA(n_components=n_digits).fit(data)
   pca = PCA(n_components=n_components)
   reduced_data = pca.fit_transform(data)
+  print pca.get_params()
+  with open("pca.pk","wb") as filehandler:
+    pickle.dump(pca, filehandler)
   print "ok !"
 elif (projection_mode >= 2):
   print "### using manual projection ###"
@@ -163,6 +168,9 @@ else:
 print 'ok : %s s' % (time.time()-t0)
 print "all good .."
 
+## writing classifier for whole dataset prediciton
+with open("clf.pk","wb") as filehandler:
+  pickle.dump(clf, filehandler)
 
 ## retrieving infos for display, clusters stats ...
 labels = clf.labels_

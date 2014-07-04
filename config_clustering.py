@@ -21,7 +21,7 @@ projection_mode = 1 # (0 : none, 1 : PCA, 2 : Manual, 3 : Manuel + PCA)
 n_components = 5 #PCA
 n_points = 2000
 compute_pandas = True
-metric=distance.euclidean
+#metric=distance.euclidean
 all_in_threshold = 90 # %, over which we only consider individuals who are in the combination of filters > threshold 
 
 display = False
