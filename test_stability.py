@@ -16,12 +16,13 @@ from collections import defaultdict
 from itertools import permutations
 
 filename_list = []
-#for i in range(1,11):
+for i in range(1,11):
 #for i in range(1,3):
-#  filename_list.append("test_validity/100k_t%s.csv" %i)
+  filename_list.append("test_validity/100k_t%s.csv" %i)
 
-for i in range(1,9):
-  filename_list.append("test_validity/1M_t%s.csv" %i)
+#for i in range(1,9):
+#for i in range(1,6):
+#  filename_list.append("test_validity/1M_t%s.csv" %i)
 
 n_components = 5
 n_clusters = 8
@@ -69,7 +70,7 @@ def computeClassifier(nb_test):
   clusters_centers = dict()
   for i in range(nb_test):
     clf[i] = KMeans(init='k-means++', n_clusters=n_clusters, precompute_distances=False,
-                    n_init=10,  verbose=0)
+                    n_init=10,  verbose=0, n_jobs=3, tol=1e-5)
     labels[i] = clf[i].fit_predict(reduced_data[i])
     print "computed classifier %s " % i
   return clf
@@ -77,9 +78,10 @@ def computeClassifier(nb_test):
 ## euclidian distance
 def distance(x,y):
   d = 0
-  for i in range(n_components):
-    d += (x[i] - y[i]) **2
-  return math.sqrt(d)
+  #for i in range(n_components):
+  #  d += (x[i] - y[i]) **2
+  #return math.sqrt(d)
+  return np.dot(x,y)/(math.sqrt(np.dot(x,x))*math.sqrt(np.dot(y,y)))
 
 ## sum of distance between cluster centers c1 and c2 for a given permutation p
 def localDistance(c1, c2, p):
@@ -98,12 +100,14 @@ def findBestCombo(clf1, clf2):
   run = True
   tested = 0
   min_dist = 1000000
+  min_dist = -1000000 ## if COSINE
   best_perm = []
   while run:
     try:
       current = p.next()
       local_dist = localDistance(c1, c2, current)
-      if (local_dist < min_dist):
+      #if (local_dist < min_dist):
+      if (local_dist > min_dist): ## if COSINE
         min_dist = local_dist
         best_perm = copy.deepcopy(current)
       tested += 1
