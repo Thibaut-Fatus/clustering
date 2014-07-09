@@ -7,7 +7,7 @@ binary = True ##CAUTION need to be set in user_mask !!!
 filename_clf = 'dataset_100k_bin.csv'
 #filename_clf = 'dataset_1M_bin.csv'
 #filename_clf = 'dataset_20M_bin.csv'
-#filename_clf = 'dump_from_db_1M.csv'
+filename_clf = 'dump_from_db_1M.csv'
 
 ## filename for pandas stats
 filename_pd = 'dataset_100k.csv'

@@ -24,6 +24,9 @@ import pickle
 from config_clustering import *
 from user_mask import *
 
+## loads dimensions : data sent to front need to be octopus compliant
+from app.config.schema import dimensions_lst as dimensions
+
 ## PCA va 10* plus vite que le scale + learn, pour resultats similaires voire mieux
 ## cosine c'est trop long .. meme sur 100k, DBSCAN sur PCA ou autre c'est bizarre .. toutes les distances manuelles ca marche pas 
 ## en use pca les decrits sont pas mal avec DBSCAN, mais pas la visu 
@@ -71,6 +74,12 @@ if (binary and compute_global_means):
       f.write('}')
     f.write('\n}')
   print "ok!"
+
+## reverse dimensions (18- -> (age, 0))
+reverse_dims = dict()
+for k in dimensions:
+  for e in k['bins']:
+    reverse_dims[e['name']] = (k['key'], e['key'])
 
 ## scale data if asked
 if scale_data:
@@ -272,7 +281,9 @@ def recursive_drop(d_label, dims_to_consider, current_path, w_cluster, w_interes
       new_path.append(ss_dim)
       recursive_drop(reduced_d_label, dims_to_consider[1:], new_path, w_cluster, w_interest, w_mi)
   else:
-    path = "#".join(current_path)
+    #path = "#".join(current_path)
+    # write "csp#0|geography#1"
+    path = "|".join(map(lambda x:"#".join([str(y) for y in reverse_dims[x]]), current_path))
     if len(d_label) > 0:
       w_cluster.writerow([path, len(d_label)])
       interest_drop(d_label, current_path, w_interest)
@@ -296,9 +307,11 @@ def create_cluster(d_label, dims_to_consider, label_id, infos, filter_fixed):
   infos["marketIntents"].append((label_id, filename_mi))
   infos["counts"].append((label_id, len(d_label)))
   if (len(filter_fixed) == 1):
-    infos["filters"].append((label_id, filter_fixed[0]))
+    #infos["filters"].append((label_id, filter_fixed[0]))
+    infos["filters"].append((label_id, "#".join([str(x) for x in reverse_dims[filter_fixed[0]]])))
   elif (len(filter_fixed) == 2):
-    infos["filters"].append((label_id, "%s - %s" % (filter_fixed[0], filter_fixed[1])))
+    #infos["filters"].append((label_id, "%s - %s" % (filter_fixed[0], filter_fixed[1])))
+    infos["filters"].append((label_id, ("#".join([str(x) for x in reverse_dims[filter_fixed[0]]]) + "|" + ("#".join([str(x) for x in reverse_dims[filter_fixed[1]]])))))
   else:
     infos["filters"].append((label_id, "No Filters"))
   w_cluster = csv.writer(open(filename_cluster, 'wb'))
@@ -329,6 +342,7 @@ infos["interests"] = []
 infos["marketIntents"] = []
 infos["counts"] = []
 infos["filters"] = []
+
 for p,nb in pop.items():
   print '###################'
   print "label %s ( %s ):" % (p, nb)
