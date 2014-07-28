@@ -44,3 +44,21 @@ Age,1,50-65,5,,,,,,1,5,,,7
 Age,1,65+,6,,,,,,1,6,,,8
 Gender,0,Male,1,,,,,,0,1,,,1
 Gender,0,Female,0,,,,,,0,0,,,0
+Client Purchasing Categories,6,cLarge appliances,0,,,,,,6,0,,,46
+Client Purchasing Categories,6,cFurnitures,1,,,,,,6,1,,,47
+Client Purchasing Categories,6,cClothing,2,,,,,,6,2,,,48
+Client Purchasing Categories,6,cConsumer electronics,3,,,,,,6,3,,,49
+Client Purchasing Categories,6,cHome decoration,4,,,,,,6,4,,,50
+Client Purchasing Categories,6,cSports & entertainment,5,,,,,,6,5,,,51
+Client Purchasing Categories,6,cBeauty products,6,,,,,,6,6,,,52
+Client Purchasing Categories,6,cShoes,7,,,,,,6,7,,,53
+Client Purchasing Categories,6,cLingerie,8,,,,,,6,8,,,54
+Customer Segmentation,7,Frequent cyber-buyers,0,,,,,,7,0,,,55
+Customer Segmentation,7,Occasional buyers,1,,,,,,7,1,,,56
+Customer Segmentation,7,Discount buyers,2,,,,,,7,2,,,57
+Customer Segmentation,7,Mono-category buyers,3,,,,,,7,3,,,58
+Customer Segmentation,7,Cyber-orders,4,,,,,,7,4,,,59
+Funnel,8,General population,0,,,,,,8,0,,,60
+Funnel,8,Visitor,1,,,,,,8,1,,,61
+Funnel,8,Client,2,,,,,,8,2,,,62
+Funnel,8,Loyal client,3,,,,,,8,3,,,63

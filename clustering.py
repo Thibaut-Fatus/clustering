@@ -25,7 +25,7 @@ from config_clustering import *
 from user_mask import *
 
 ## loads dimensions : data sent to front need to be octopus compliant
-from app.config.schema import dimensions_lst as dimensions
+#from app.config.schema import dimensions_lst as dimensions
 
 ## PCA va 10* plus vite que le scale + learn, pour resultats similaires voire mieux
 ## cosine c'est trop long .. meme sur 100k, DBSCAN sur PCA ou autre c'est bizarre .. toutes les distances manuelles ca marche pas 
@@ -56,7 +56,7 @@ if (binary and compute_global_means):
     if store_pn[dims[mask[i]]] == "":
       store_pn[dims[mask[i]]] = defaultdict(str)
     store_pn[dims[mask[i]]][ssdims[mask[i]][mask_ssd[i]]] = l
-  with open("mean_all.json", 'wb') as f:
+  with open(get_filename("mean_all.json"), 'wb') as f:
     f.write('{\n"count":%s' % total)
     for k, l in store_pn.items():
       ## here lies a hack for front integration :)
@@ -76,10 +76,10 @@ if (binary and compute_global_means):
   print "ok!"
 
 ## reverse dimensions (18- -> (age, 0))
-reverse_dims = dict()
-for k in dimensions:
-  for e in k['bins']:
-    reverse_dims[e['name']] = (k['key'], e['key'])
+#reverse_dims = dict()
+#for k in dimensions:
+#  for e in k['bins']:
+#    reverse_dims[e['name']] = (k['key'], e['key'])
 
 ## scale data if asked
 if scale_data:
@@ -92,7 +92,7 @@ if (projection_mode == 1):
   pca = PCA(n_components=n_components)
   reduced_data = pca.fit_transform(data)
   print pca.get_params()
-  with open("pca.pk","wb") as filehandler:
+  with open(get_filename("pca.pk"),"wb") as filehandler:
     pickle.dump(pca, filehandler)
   print "ok !"
 elif (projection_mode >= 2):
@@ -178,11 +178,12 @@ print 'ok : %s s' % (time.time()-t0)
 print "all good .."
 
 ## writing classifier for whole dataset prediciton
-with open("clf.pk","wb") as filehandler:
+with open(get_filename("clf.pk"),"wb") as filehandler:
   pickle.dump(clf, filehandler)
 
 ## retrieving infos for display, clusters stats ...
 labels = clf.labels_
+labels = [x + 1 for x in labels]
 got_centers = False
 try:
   cluster_centers = clf.cluster_centers_
@@ -247,10 +248,16 @@ if compute_pandas:
 ##  print sorted_count[i]
 first_write_interests = True
 
+def get_label(indice):
+  return "%s#%s" % (dims[mask[indice]], mask_ssd[indice])
+
+def to_label(dim, ss_dim_id):
+  return "%s#%s" % (dim, ss_dim_id)
+
 def interest_drop(d_label, current_path, w):
   global first_write_interests
-  for _, ss_dim in ssdims[dims_ids['Interests']].items():
-    l = len(d_label[d_label[ss_dim] == 1])
+  for k, ss_dim in ssdims[dims_ids['interests']].items():
+    l = len(d_label[d_label[to_label('interests',k)] == 1])
     if l > 0:
       if first_write_interests:
         first_write_interests = False
@@ -262,8 +269,8 @@ first_write_mi = True
 
 def market_intent_drop(d_label, current_path, w):
   global first_write_mi
-  for _, ss_dim in ssdims[dims_ids['Market intent']].items():
-    l = len(d_label[d_label[ss_dim] == 1])
+  for k, ss_dim in ssdims[dims_ids['market_intent']].items():
+    l = len(d_label[d_label[to_label('market_intent',k)] == 1])
     if l > 0:
       if first_write_mi:
         first_write_mi = False
@@ -273,17 +280,19 @@ def market_intent_drop(d_label, current_path, w):
 ## may be a problem if more than max_depth filters are > threshold (male-urban-student -> only have 18- left ..) 
 
 def recursive_drop(d_label, dims_to_consider, current_path, w_cluster, w_interest, w_mi):
-  if (len(dims_to_consider) > 0 and len(current_path) < max_depth + 1):
+  if (len(dims_to_consider) > 0 and len(current_path) < max_depth ):
     d_id, d = dims_to_consider[0]
-    for _,ss_dim in ssdims[d_id].items():
-      reduced_d_label = d_label[d_label[ss_dim] == 1]
+    for a,ss_dim in ssdims[d_id].items():
+      lab = to_label(d,a)
+      reduced_d_label = d_label[d_label[lab] == 1]
       new_path = copy.deepcopy(current_path)
-      new_path.append(ss_dim)
+      new_path.append(lab)
       recursive_drop(reduced_d_label, dims_to_consider[1:], new_path, w_cluster, w_interest, w_mi)
   else:
     #path = "#".join(current_path)
     # write "csp#0|geography#1"
-    path = "|".join(map(lambda x:"#".join([str(y) for y in reverse_dims[x]]), current_path))
+    #path = "|".join(map(lambda x:"#".join([str(y) for y in reverse_dims[x]]), current_path))
+    path = "|".join(current_path)
     if len(d_label) > 0:
       w_cluster.writerow([path, len(d_label)])
       interest_drop(d_label, current_path, w_interest)
@@ -291,37 +300,39 @@ def recursive_drop(d_label, dims_to_consider, current_path, w_cluster, w_interes
 
 def create_cluster(d_label, dims_to_consider, label_id, infos, filter_fixed): 
   print dims_to_consider
+  print "filter fixed : ", filter_fixed 
   global first_write_mi, first_write_interests
   first_write_interests = True
   first_write_mi = True
-  filename_interest = "data_clustering/interests-%s.data" % p
+  filename_interest = "data_clustering/" + get_filename("interests-%s.data" % p)
   w_interest = open(filename_interest, 'wb')
   w_interest.write('{"data": [')
-  filename_mi = "data_clustering/mis-%s.data" % p
+  filename_mi = "data_clustering/" + get_filename("mis-%s.data" % p)
   w_mi = open(filename_mi, 'wb')
   w_mi.write('{"data": [')
 
-  filename_cluster = "data_clustering/cluster-%s.csv" % label_id
+  filename_cluster = "data_clustering/" + get_filename("cluster-%s.csv" % label_id)
   infos["names"].append((label_id, filename_cluster))
   infos["interests"].append((label_id, filename_interest))
   infos["marketIntents"].append((label_id, filename_mi))
   infos["counts"].append((label_id, len(d_label)))
   if (len(filter_fixed) == 1):
-    #infos["filters"].append((label_id, filter_fixed[0]))
-    infos["filters"].append((label_id, "#".join([str(x) for x in reverse_dims[filter_fixed[0]]])))
-  elif (len(filter_fixed) == 2):
-    #infos["filters"].append((label_id, "%s - %s" % (filter_fixed[0], filter_fixed[1])))
-    infos["filters"].append((label_id, ("#".join([str(x) for x in reverse_dims[filter_fixed[0]]]) + "|" + ("#".join([str(x) for x in reverse_dims[filter_fixed[1]]])))))
+    infos["filters"].append((label_id, filter_fixed[0]))
+    #infos["filters"].append((label_id, "#".join([str(x) for x in reverse_dims[filter_fixed[0]]])))
+  elif (len(filter_fixed) >= 2):
+    infos["filters"].append((label_id, "%s|%s" % (filter_fixed[0], filter_fixed[1])))
+    #infos["filters"].append((label_id, ("#".join([str(x) for x in reverse_dims[filter_fixed[0]]]) + "|" + ("#".join([str(x) for x in reverse_dims[filter_fixed[1]]])))))
   else:
     infos["filters"].append((label_id, "No Filters"))
   w_cluster = csv.writer(open(filename_cluster, 'wb'))
+  print "dims to consider : ", dims_to_consider 
   recursive_drop(d_label, dims_to_consider, [], w_cluster, w_interest, w_mi)
 
   w_interest.write(']}')
   w_mi.write(']}')
 
 def write_cluster_info(infos):
-  w_info = open("cluster_info.json", 'wb')
+  w_info = open(get_filename("cluster_info.json"), 'wb')
   w_info.write('{"nb" : %s' % n_clusters)
   for key, list_cl in infos.items():
     if key != "nb":
@@ -356,10 +367,11 @@ for p,nb in pop.items():
       e = {}
       if compute_pandas:
         e_t = []
-        if ssdims[mask[i]][mask_ssd[i]] == 'Female':
-          e_t = res[ssdims[mask[i]][mask_ssd[i]]]['Male'] #use ['Female'] to get first column only as we are using 'count' and all rows are equal
+        #if ssdims[mask[i]][mask_ssd[i]] == 'gender#0':
+        if i == 0:
+          e_t = res[get_label(i)][get_label(1)] #use ['Female'] to get first column only as we are using 'count' and all rows are equal
         else:
-          e_t = res[ssdims[mask[i]][mask_ssd[i]]]['Female'] #use ['Female'] to get first column only as we are using 'count' and all rows are equal
+          e_t = res[get_label(i)][get_label(0)] #use ['Female'] to get first column only as we are using 'count' and all rows are equal
         try: 
           e[0] = e_t[p,False]
         except:
@@ -382,33 +394,44 @@ for p,nb in pop.items():
       except:
         print 'no data, skipping'
     best_dims = sorted(bdim.iteritems(), key=operator.itemgetter(1), reverse = True)
-    #print best_dims
+    #best_dims = []
+    trunc_dim = copy.deepcopy(always_bin) # retrieve Intersets, MI, Funnel..
+    #print "tempo : ", best_dims_t
+    #for e in best_dims_t:
+    #  if dims[e[0]] not in trunc_dim:
+    #    best_dims.append(e)
+    print "best dims : ", best_dims
     filter_real_count = []
     for d,s in best_dims:
       print dims[d]
       for ele in ldim[d][:10]:
-        if ele[0] > all_in_threshold:
+        if (ele[0] > all_in_threshold) and (dims[d] not in trunc_dim):
           filter_real_count.append(ele[4])
         print "\t%s : %s in, %s out ( %.2f %%)" % (ele[3], ele[2], ele[1], ele[0])
       print "\t\t__ __ __"
     d_label = []
     filter_fixed = []
-    trunc_dim = copy.deepcopy(always_bin) # retrieve Intersets, MI, Funnel..
     if (len(filter_real_count) == 1):
       indice = filter_real_count[0]
-      print indice
-      indice_u = ssdims[mask[indice]][mask_ssd[indice]]
+      #indice_u = (ssdims[mask[indice]][mask_ssd[indice]])
+      #indice_u = "%s_%s" % (dims[mask[indice]], mask_ssd[indice])
+      indice_u = get_label(indice)
       trunc_dim.add(dims[mask[indice]])
       d_label = data_pandas[(data_pandas[indice_u] == 1) & (data_pandas['labels'] == p)]
       print "\n\tCombinaison of one %s %% filter : %s (%s)" % (all_in_threshold, len(d_label), indice_u)
       filter_fixed.append(indice_u)
 
-    elif (len(filter_real_count) == 2):
+    elif (len(filter_real_count) >= 2):
       indice0 = filter_real_count[0]
       indice1 = filter_real_count[1]
-      print indice0, indice1
-      indice0_u = ssdims[mask[indice0]][mask_ssd[indice0]]
-      indice1_u = ssdims[mask[indice1]][mask_ssd[indice1]]
+      #indice0_u = ssdims[mask[indice0]][mask_ssd[indice0]]
+      #indice1_u = ssdims[mask[indice1]][mask_ssd[indice1]]
+      #print dims[mask[indice0]]
+      #print dims[mask[indice1]]
+      #indice0_u = "%s_%s" % (dims[mask[indice0]], mask_ssd[indice0])
+      #indice1_u = "%s_%s" % (dims[mask[indice1]], mask_ssd[indice1])
+      indice0_u = get_label(indice0)
+      indice1_u = get_label(indice1)
       trunc_dim.add(dims[mask[indice0]])
       trunc_dim.add(dims[mask[indice1]])
       d_label = data_pandas[(data_pandas[indice0_u] == 1) & (data_pandas[indice1_u] == 1) & (data_pandas['labels'] == p)]
@@ -467,7 +490,7 @@ if got_centers:
   for i in labels_unique:
     for j in labels_unique:
       if i < j:
-        print "\t%s\t%s\t%.3f" % (i, j, center_distances[i][j])
+        print "\t%s\t%s\t%.3f" % (i, j, center_distances[i-1][j-1])
 
 
 ###################

@@ -15,7 +15,8 @@ def update_perf(actions):
     res = helpers.bulk(client=es, actions=actions, chunk_size=n)
     return res
 
-f = open('labels.csv','rb')
+#f = open('labels_alldim.csv','rb')
+f = open('labels_lr.csv','rb')
 reader = csv.reader(f)
 
 def commit():

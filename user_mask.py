@@ -1,23 +1,27 @@
+# coding=utf-8
 import csv, operator
+## loads dimensions : data sent to front need to be octopus compliant
+from app.config.schema import dimensions_lst as dimensions
 
 binary = True
 ## mapper to get dict of dimensions and subdimensions
 print '### loading mapper ... ###'
-with open('map.csv', 'rb') as f:
-  r = csv.reader(f)
-  dim_ids = set()
-  dims = dict()
-  ssdims = dict()
-  for row in r:
-    dim = row[0]
-    dim_id = int(row[1])
-    ssdim = row[2] 
-    ssdim_id = int(row[3])
-    if dim_id not in dim_ids:
-      dim_ids.add(dim_id)
-      dims[dim_id] = dim
-      ssdims[dim_id] = dict()
-    ssdims[dim_id][ssdim_id] = ssdim
+dims = dict()
+ssdims = dict()
+dim_ids = set()
+forbidden = set(["performance","performance_rate"])
+for d in dimensions:
+  if d['key'] not in forbidden:
+    dim = d['key']
+    dim_id = d['pos']
+    for e in d['bins']:
+      ssdim = e['name']
+      ssdim_id = e['key']
+      if dim_id not in dim_ids:
+        dim_ids.add(dim_id)
+        dims[dim_id] = dim
+        ssdims[dim_id] = dict()
+      ssdims[dim_id][ssdim_id] = ssdim
 print 'ok !'
 
 ## inverse dims mapping to retrieve id from name
@@ -34,7 +38,7 @@ sorted_dims = sorted(dims.iteritems(), key=operator.itemgetter(0))
 mask = dict()
 mask_ssd = dict()
 i = 0
-always_bin = set(['Market intent', 'Interests', 'Funnel'])
+always_bin = set(['market_intent', 'interests', 'funnel'])
 for d_id, d_name in sorted_dims:
   if binary or d_name in always_bin:
     for ssd in ssdims[d_id]:
@@ -48,9 +52,9 @@ print "ok !"
 
 ##list of ssdims (in order) for pandas
 idx = []
-for _,e in ssdims.items():
-  for _,j in e.items():
-    idx.append(j)
+for k,e in ssdims.items():
+  for f,_ in e.items():
+    idx.append("%s#%s" % (dims[k],f))
 
 #inverse masks : first mask_pn indice -> dim_name, then dim_name -> dim_value (str) -> indice
 mask_pn = {k:dims[v] for k,v in mask.items()}
@@ -60,4 +64,15 @@ for k,v in mask_ssd.items():
 
 for k,v in mask_ssd.items():
   mask_ssd_pn_inv[mask_pn[k]][ssdims[mask[k]][v]] = k
+
+## retrive indices from dim pos and ssdim indice
+indice_dict = dict()
+i = 0
+for k,v in dims.items():
+ indice_dict[v] = dict()
+ for j in range(len(ssdims[k])):
+   indice_dict[v][j] = i
+   i += 1
+
+nb_ssd = i #we've counted the total nb of ss dims
 

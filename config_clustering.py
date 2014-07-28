@@ -7,10 +7,14 @@ binary = True ##CAUTION need to be set in user_mask !!!
 filename_clf = 'dataset_100k_bin.csv'
 #filename_clf = 'dataset_1M_bin.csv'
 #filename_clf = 'dataset_20M_bin.csv'
-filename_clf = 'dump_from_db_1M.csv'
+#filename_clf = 'dump_from_db_1M.csv'
+filename_clf = 'dump_from_db_all1M.csv'
+#filename_clf = 'dump_from_db_all100k.csv'
+#filename_clf = 'laredoute.csv'
+file_prefix = ''
 
 ## filename for pandas stats
-filename_pd = 'dataset_100k.csv'
+#filename_pd = 'dataset_100k.csv'
 
 ## classifier relative
 choose_clf = 'kmeans' # [kmeans, dbscan]
@@ -19,12 +23,12 @@ scale_data = False # mean 0 and same std for all variables
 val = 5 ## value given for weighted distance (interests / market intent)
 projection_mode = 1 # (0 : none, 1 : PCA, 2 : Manual, 3 : Manuel + PCA)
 n_components = 5 #PCA
-n_points = 2000
 compute_pandas = True
 #metric=distance.euclidean
 all_in_threshold = 90 # %, over which we only consider individuals who are in the combination of filters > threshold 
 
 display = False
+n_points = 2000
 write_output = True
 max_depth = 2 # for data visualisation and ID assignation (crossfilter)
 
@@ -37,3 +41,5 @@ Y = {'Interests' : 1}
 Z = {'Market intent' : 1}
 #Z = {'Geography' : 1}
 
+def get_filename(name):
+  return file_prefix + name
